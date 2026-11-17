@@ -157,6 +157,7 @@ details[open]>summary::after{transform:rotate(-135deg)}
 .bar{height:10px;background:var(--line);border-radius:999px;overflow:hidden;margin:14px 0}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),#34b3a4);border-radius:999px;transition:width .5s}
 .toast{bottom:calc(90px + env(safe-area-inset-bottom,0px));box-shadow:0 8px 24px rgba(0,0,0,.22)}
 .tabs.sm button,#lessons button,#groups button{min-height:40px}
+body.nb #tabs{bottom:calc(62px + env(safe-area-inset-bottom,0px))}body.nb .toast{bottom:calc(152px + env(safe-area-inset-bottom,0px))}body.nb main{padding-bottom:190px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* icons, images, tab markers */
@@ -262,6 +263,7 @@ body #tabs button{position:relative}
 <p class="mute">Tốc độ đọc: <span id="sSpv">1.00x</span></p><input type="range" id="sSp" aria-label="Tốc độ đọc" min="0.6" max="1.3" step="0.05" value="1" style="width:100%">
 <p class="mute">Cỡ chữ</p><select id="sFs" aria-label="Cỡ chữ" style="width:100%;padding:10px;border-radius:10px"><option value="100">Vừa</option><option value="112">Lớn</option><option value="125">Rất lớn</option></select>
 <p class="mute">Giao diện</p><select id="sTh" aria-label="Giao diện" style="width:100%;padding:10px;border-radius:10px"><option value="auto">Tự động theo máy</option><option value="light">Sáng</option><option value="dark">Tối</option></select>
+<p class="mute">Thanh tab dưới</p><select id="sNav" aria-label="Vị trí thanh tab" style="width:100%;padding:10px;border-radius:10px;margin-bottom:10px"><option value="auto">Tự động (nâng lên nếu bị che)</option><option value="high">Luôn nâng cao</option><option value="low">Luôn ở thấp</option></select>
 <div class="row"><button class="btn p" id="sTest">Nghe thử giọng</button></div>
 <p class="mute">Cài đặt được lưu trên thiết bị này.</p>
 <h3>Mức dùng AI</h3><p class="mute" id="usg"></p>
@@ -293,7 +295,7 @@ const STANDALONE_DL={save:async({filename,data})=>{const a=document.createElemen
 let sample=null,dl=STANDALONE_DL,dict=null,cur=null,vocab=[],busyRec=false,sr=null;
 (async()=>{try{if(window.claude){sample=await claude.use("sample");wrapSample();dl=await claude.use("downloads");dict=await claude.use("dictation");
  if(dict){dict.onPartial(({text})=>cur&&cur.part(text));dict.onFinal(({text})=>cur&&cur.fin(text));dict.onState(({state})=>{if(state==="idle"&&cur)cur.end()})}}}catch(e){}})();
-const say=(id,t)=>{t=t||"";if(/not-allowed/.test(t))t=id==="mC"?"Trang chưa được dùng micro. Hãy bấm vào ô nhập rồi dùng micro trên bàn phím iPhone.":"Trang chưa được dùng micro. Hãy dùng ô micro bàn phím ở bên dưới.";$(id).textContent=t;if(id==="mB"&&/micro/.test(t)&&$("fb"))$("fb").open=true};
+const say=(id,t)=>{t=t||"";if(/not-allowed/.test(t))t=id==="mC"?"Trang chưa được dùng micro. Hãy bấm vào ô nhập rồi dùng micro trên bàn phím iPhone.":"Trang chưa được dùng micro. Hãy dùng Bước 2: bấm vào ô, rồi bấm micro trên bàn phím iPhone.";$(id).textContent=t;if(id==="mB"&&/micro/.test(t)&&$("fb"))$("fb").open=true};
 function errMsg(e){return e&&e.code==="not_granted"?"Bạn cần cho phép Claude xử lý yêu cầu này khi trang hỏi.":e&&e.code==="rate_limited"?"Đang quá tải, hãy thử lại sau ít phút.":"Chưa xử lý được, hãy thử lại."}
 
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
@@ -1012,6 +1014,12 @@ function setMk(k,n,sr,dirty){const b=tabsEl.querySelector(`[data-t="${k}"]`);let
 function updMarks(){const D=rd(DK,{})[dkey(Date.now())]||{},left=4-["c","s","n","p"].filter(k=>D[k]).length,ex=$("ex"),res=document.getElementById("res"),prog=ex&&(ex.querySelector("input:checked")||[...ex.querySelectorAll("textarea")].some(t=>t.value.trim()));
  setMk("t",left,"việc hôm nay chưa làm",false);setMk("x",prog&&!(res&&res.innerHTML.trim())?1:0,"Bài tập đang làm dở, chưa nộp",true);setMk("c",(window.wUns||$("gIn").value.trim())?1:0,"Có nội dung chưa lưu",true)}
 document.addEventListener("input",updMarks);document.addEventListener("click",()=>setTimeout(updMarks,0));updMarks();
+
+/* lift the tab bar when something (e.g. a hosting badge) covers it */
+function covered(){const r=$("tabs").getBoundingClientRect();return [.2,.5,.85].some(f=>{const e=document.elementsFromPoint(r.left+r.width*f,r.top+r.height/2)[0];return e&&!$("tabs").contains(e)&&e!==document.documentElement&&e!==document.body})}
+function navMode(){const m=ST.nav||"auto",b=document.body.classList;if(m==="high")b.add("nb");else if(m==="low")b.remove("nb");else if(!b.contains("nb")&&covered())b.add("nb")}
+$("sNav").value=ST.nav||"auto";$("sNav").onchange=()=>{ST.nav=$("sNav").value;saveST();document.body.classList.remove("nb");navMode()};
+{let n=0;const iv=setInterval(()=>{navMode();if(++n>12)clearInterval(iv)},1500);navMode()}
 
 if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register("sw.js").catch(()=>{});
 (function(){const ios=/iphone|ipad|ipod/i.test(navigator.userAgent),st=matchMedia("(display-mode: standalone)").matches||navigator.standalone;let ev=null;
